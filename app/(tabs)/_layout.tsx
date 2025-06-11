@@ -13,15 +13,18 @@ export default function TabLayout() {
           name="index"
           options={{
             title: 'Home',
+             headerStatusBarHeight: 0,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="home" color={color} size={size} />
             ),
           }}
         />
         <Tabs.Screen
-          name="add"
-          options={{
-            title: 'Add Item',
+            name="add"
+            options={{
+              title: 'Add Item',
+              headerTitleStyle: { fontWeight: 'bold' },
+              headerStatusBarHeight: 0,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="add-circle" color={color} size={size} />
             ),
