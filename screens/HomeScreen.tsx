@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useState } from 'react';
-import { Alert, Button, FlatList, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Swipeable, TouchableOpacity } from 'react-native-gesture-handler';
+import { Alert, Button, FlatList, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { Snackbar } from 'react-native-paper';
 import ItemCard from '../components/ItemCard';
 import { loadItems, saveItems } from '../services/storage';
@@ -15,6 +17,7 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deletedItem, setDeletedItem] = useState<any | null>(null);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [editedImage, setEditedImage] = useState<string | null>(null);
 
 
 
@@ -51,6 +54,7 @@ const renderItem = ({ item }: { item: any }) => (
         setEditingItem(item);                 // Open modal
         setEditedTitle(item.title);
         setEditedLocation(item.location);
+        setEditedImage(item.image || null);
       }}
       activeOpacity={0.9}
     >
@@ -89,6 +93,62 @@ const handleDelete = (id: string) => {
 };
 
 
+const pickImage = () => {
+  Alert.alert(
+    'Select Image',
+    'Choose an option',
+    [
+      { text: 'Camera', onPress: openCamera },
+      { text: 'Gallery', onPress: openGallery },
+      { text: 'Cancel', style: 'cancel' },
+    ],
+    { cancelable: true }
+  );
+};
+
+const openCamera = async () => {
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert('Permission Denied', 'Camera access is required.');
+    return;
+  }
+
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: 'Images',
+    quality: 0.7,
+    allowsEditing: true,
+  });
+
+  handleImageResult(result);
+};
+
+const openGallery = async () => {
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert('Permission Denied', 'Gallery access is required.');
+    return;
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: 'Images',
+    quality: 0.7,
+    allowsEditing: true,
+  });
+
+  handleImageResult(result);
+};
+
+const handleImageResult = async (result: ImagePicker.ImagePickerResult) => {
+  if (!result.canceled && result.assets && result.assets.length > 0) {
+    const manipulated = await ImageManipulator.manipulateAsync(
+      result.assets[0].uri,
+      [{ resize: { width: 800 } }],
+      { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+    );
+    setEditedImage(manipulated.uri); // update your state here
+  }
+};
+
 
   return (
     <View style={styles.container}>
@@ -119,6 +179,30 @@ const handleDelete = (id: string) => {
             <View style={styles.modalBackdrop}>
                 <View style={styles.modalBox}>
                 <Text style={styles.modalTitle}>Edit Item</Text>
+                <Text style={styles.itemTitle}>Image</Text>
+           
+                <View style={styles.imageWrapper}>
+                {editedImage ? (
+                    <Image source={{ uri: editedImage }} style={styles.modalImage} />
+                ) : (
+                    <View style={[styles.modalImage, styles.placeholder]}>
+                    <Text style={styles.placeholderText}>No Image</Text>
+                    </View>
+                )}
+
+                <TouchableOpacity
+                    onPress={editedImage ? () => setEditedImage(null) : pickImage}
+                    style={styles.imageOverlayButton}
+                >
+                    <Ionicons
+                    name={editedImage ? 'trash-outline' : 'camera-outline'}
+                    size={18}
+                    color="#fff"
+                    />
+                </TouchableOpacity>
+                </View>
+
+
 
                 <View>
                     <Text style={styles.itemTitle}>Item Name</Text>
@@ -139,15 +223,15 @@ const handleDelete = (id: string) => {
                         />
                 </View>
                 
-
+                
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <Button title="Cancel" onPress={() => setEditingItem(null)} />
                     <Button
                     title="Save"
                     onPress={async () => {
-                        const updatedItems = items.map(i =>
+                       const updatedItems = items.map((i) =>
                         i.id === editingItem.id
-                            ? { ...i, title: editedTitle, location: editedLocation }
+                            ? { ...i, title: editedTitle, location: editedLocation, image: editedImage }
                             : i
                         );
                         setItems(updatedItems);
@@ -299,5 +383,44 @@ snackbar: {
   borderRadius: 12,
   backgroundColor: '#333', // Optional: change to '#444' for better iOS feel
 },
+
+placeholder: {
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+placeholderText: {
+  color: '#888',
+  fontSize: 12,
+},
+imageWrapper: {
+ position: 'relative',
+  width: 100,
+  height: 100,
+  marginBottom: 12,
+  alignSelf: 'flex-start',
+},
+
+modalImage: {
+  width: '100%',
+  height: '100%',
+  borderRadius: 10,
+  backgroundColor: '#eee',
+  borderWidth: 1,
+  borderColor: '#ccc',
+},
+
+
+ imageOverlayButton: {
+  position: 'absolute',
+  top: 6,
+  right: 6,
+  backgroundColor: 'rgba(0,0,0,0.6)',
+  padding: 8,
+  borderRadius: 16,
+  zIndex: 10,
+  elevation: 4,
+},
+
+
 
 });
