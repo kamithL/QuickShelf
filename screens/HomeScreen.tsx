@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import { Alert, Button, FlatList, Modal, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Swipeable, TouchableOpacity } from 'react-native-gesture-handler';
 import ItemCard from '../components/ItemCard';
 import { loadItems, saveItems } from '../services/storage';
@@ -9,6 +9,10 @@ import { loadItems, saveItems } from '../services/storage';
 export default function HomeScreen() {
   const [items, setItems] = useState<any[]>([]);
   const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [editedTitle, setEditedTitle] = useState('');
+  const [editedLocation, setEditedLocation] = useState('');
+
+
 
   useFocusEffect(
     useCallback(() => {
@@ -19,17 +23,6 @@ export default function HomeScreen() {
       fetchItems();
     }, [])
   );
-
-//   const handleDelete = async (id: string) => {
-//     const filtered = items.filter(item => item.id !== id);
-//     setItems(filtered);
-//     await saveItems(filtered);
-//   };
-
-  const handleEdit = (item: any) => {
-    // Set the item to be edited (we'll use this for modal)
-    setEditingItem(item);
-  };
 
 
 const renderRightActions = (id: string) => (
@@ -45,18 +38,25 @@ const renderRightActions = (id: string) => (
 
 
 const renderItem = ({ item }: { item: any }) => (
-<Swipeable
-  renderRightActions={() => renderRightActions(item.id)}
-  overshootRight={false}
->
-  <View style={styles.row}>
-    <ItemCard item={item} />
-  </View>
-</Swipeable>
-
-
-
+  <Swipeable
+    renderRightActions={() => renderRightActions(item.id)}
+    overshootRight={false}
+  >
+    <TouchableOpacity
+      onPress={() => {
+        setEditingItem(item);                 // Open modal
+        setEditedTitle(item.title);
+        setEditedLocation(item.location);
+      }}
+      activeOpacity={0.9}
+    >
+      <View style={styles.row}>
+        <ItemCard item={item} />
+      </View>
+    </TouchableOpacity>
+  </Swipeable>
 );
+
 
 const handleDelete = (id: string) => {
   Alert.alert(
@@ -89,7 +89,51 @@ const handleDelete = (id: string) => {
          ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
 
-      {/* Modal for editing — coming next step */}
+    <Modal visible={!!editingItem} animationType="slide" transparent>
+        <View style={styles.modalBackdrop}>
+            <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Edit Item</Text>
+
+            <View>
+                <Text style={styles.itemTitle}>Item Name</Text>
+                <TextInput
+                    value={editedTitle}
+                    onChangeText={setEditedTitle}
+                    placeholder="Title"
+                    style={styles.input}
+                />
+            </View>
+             <View>
+                <Text style={styles.itemTitle}>Loacation</Text>
+                <TextInput
+                        value={editedLocation}
+                        onChangeText={setEditedLocation}
+                        placeholder="Location"
+                        style={styles.input}
+                    />
+            </View>
+            
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Button title="Cancel" onPress={() => setEditingItem(null)} />
+                <Button
+                title="Save"
+                onPress={async () => {
+                    const updatedItems = items.map(i =>
+                    i.id === editingItem.id
+                        ? { ...i, title: editedTitle, location: editedLocation }
+                        : i
+                    );
+                    setItems(updatedItems);
+                    await saveItems(updatedItems);
+                    setEditingItem(null);
+                }}
+                />
+            </View>
+            </View>
+        </View>
+    </Modal>
+
     </View>
   );
 }
@@ -143,5 +187,31 @@ separator: {
   backgroundColor: '#e0e0e0',
   marginLeft: 80, // optional: align with text/image
 },
-
+modalBackdrop: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.3)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+modalBox: {
+  width: '85%',
+  backgroundColor: '#fff',
+  borderRadius: 12,
+  padding: 20,
+},
+modalTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  marginBottom: 10,
+},
+input: {
+  borderWidth: 1,
+  borderColor: '#ccc',
+  borderRadius: 6,
+  padding: 8,
+  marginBottom: 12,
+},
+itemTitle: {
+  fontSize: 12,
+},
 });

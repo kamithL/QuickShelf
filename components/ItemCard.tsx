@@ -38,6 +38,7 @@ const styles = StyleSheet.create({
     height: '100%',    // Stretch with parent
     backgroundColor: 'transparent', // optional
     borderWidth:1,
+    borderColor: '#ddd',
    
   },
   image: {
