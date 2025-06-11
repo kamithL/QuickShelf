@@ -1,0 +1,147 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
+import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import { Swipeable, TouchableOpacity } from 'react-native-gesture-handler';
+import ItemCard from '../components/ItemCard';
+import { loadItems, saveItems } from '../services/storage';
+
+export default function HomeScreen() {
+  const [items, setItems] = useState<any[]>([]);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchItems = async () => {
+        const savedItems = await loadItems();
+        setItems(savedItems);
+      };
+      fetchItems();
+    }, [])
+  );
+
+//   const handleDelete = async (id: string) => {
+//     const filtered = items.filter(item => item.id !== id);
+//     setItems(filtered);
+//     await saveItems(filtered);
+//   };
+
+  const handleEdit = (item: any) => {
+    // Set the item to be edited (we'll use this for modal)
+    setEditingItem(item);
+  };
+
+
+const renderRightActions = (id: string) => (
+  <TouchableOpacity
+    onPress={() => handleDelete(id)}
+    activeOpacity={0.8}
+    style={styles.actionButton}
+  >
+    <Ionicons name="trash-outline" size={24} color="#fff" />
+  </TouchableOpacity>
+);
+
+
+
+const renderItem = ({ item }: { item: any }) => (
+<Swipeable
+  renderRightActions={() => renderRightActions(item.id)}
+  overshootRight={false}
+>
+  <View style={styles.row}>
+    <ItemCard item={item} />
+  </View>
+</Swipeable>
+
+
+
+);
+
+const handleDelete = (id: string) => {
+  Alert.alert(
+    'Delete Item',
+    'Are you sure you want to delete this item?',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const updated = items.filter(i => i.id !== id);
+          setItems(updated);
+          await saveItems(updated);
+        },
+      },
+    ]
+  );
+};
+
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>My Inventory</Text>
+      <FlatList
+        data={items}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListEmptyComponent={<Text style={styles.empty}>No items added yet.</Text>}
+         ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+
+      {/* Modal for editing — coming next step */}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 20, backgroundColor: '#fff' },
+  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 12 },
+  empty: { marginTop: 20, textAlign: 'center', color: '#888' },
+  swipeWrapper: {
+  borderRadius: 12,
+  overflow: 'hidden',
+  marginBottom: 12,
+},
+deleteBtn: {
+  backgroundColor: '#ff3b30', // iOS Messages red
+  justifyContent: 'center',
+  alignItems: 'center',
+  width: 80,
+  alignSelf: 'stretch', // Match height of swipe container
+},
+deleteText: {
+  color: '#fff',
+  fontWeight: '600',
+  fontSize: 16,
+},
+actionContainer: {
+  flexDirection: 'row',
+  alignSelf: 'stretch',
+  height: '100%',
+},
+
+actionBtn: {
+  width: 64,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+row: {
+  height: 80,               // Fixed height (like iOS)
+  backgroundColor: '#fff',
+  justifyContent: 'center',
+},
+actionButton: {
+  backgroundColor: '#ff3b30',
+  width: 64,
+  height: 80, // MUST match `.row` height
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+separator: {
+  height: 1,
+  backgroundColor: '#e0e0e0',
+  marginLeft: 80, // optional: align with text/image
+},
+
+});
