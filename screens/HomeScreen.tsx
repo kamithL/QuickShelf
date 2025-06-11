@@ -11,6 +11,7 @@ export default function HomeScreen() {
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [editedTitle, setEditedTitle] = useState('');
   const [editedLocation, setEditedLocation] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
 
 
@@ -81,8 +82,22 @@ const handleDelete = (id: string) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>My Inventory</Text>
+        <View style={styles.searchWrapper}>
+            <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
+            <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search items..."
+                style={styles.searchInputWithIcon}
+                placeholderTextColor="#aaa"
+            />
+        </View>
+
       <FlatList
-        data={items}
+        data={items.filter((item) =>
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.location?.toLowerCase().includes(searchQuery.toLowerCase())
+        )}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         ListEmptyComponent={<Text style={styles.empty}>No items added yet.</Text>}
@@ -214,4 +229,31 @@ input: {
 itemTitle: {
   fontSize: 12,
 },
+searchInput: {
+  borderWidth: 1,
+  borderColor: '#ccc',
+  borderRadius: 8,
+  padding: 10,
+  marginBottom: 12,
+},
+searchWrapper: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderWidth: 1,
+  borderColor: '#ccc',
+  borderRadius: 8,
+  paddingHorizontal: 10,
+  marginBottom: 12,
+  backgroundColor: '#f9f9f9',
+},
+searchIcon: {
+  marginRight: 6,
+},
+searchInputWithIcon: {
+  flex: 1,
+  height: 40,
+  fontSize: 15,
+  color: '#333',
+},
+
 });
