@@ -7,19 +7,22 @@ import {
   Image,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import uuid from 'react-native-uuid';
+
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
+import Button from '../components/Button';
+import Input from '../components/Input';
 import { loadItems, saveItems } from '../services/storage';
 
 export default function AddItemScreen() {
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [image, setImage] = useState<string | null>(null);
+  const [showErrors, setShowErrors] = useState(false);
 
   const handleImageSelect = () => {
     Alert.alert('Select Image', 'Choose a source', [
@@ -50,8 +53,10 @@ export default function AddItemScreen() {
   };
 
   const handleAdd = async () => {
-    if (!title.trim()) {
-      Alert.alert('Validation', 'Please enter a title.');
+    
+    if (!title.trim() || !location.trim()) {
+       setShowErrors(true);
+      // Alert.alert('Validation', 'Please enter a title.');
       return;
     }
 
@@ -66,10 +71,10 @@ export default function AddItemScreen() {
     const updated = [...existing, newItem];
     await saveItems(updated);
 
-    // ✅ Reset form
     setTitle('');
     setLocation('');
     setImage(null);
+     setShowErrors(false);
     router.replace('/');
   };
 
@@ -77,63 +82,33 @@ export default function AddItemScreen() {
     <View style={styles.container}>
       <Text style={styles.heading}>Add New Item</Text>
 
-      {/* Image Picker */}
       <View style={styles.imageWrapper}>
         {image ? (
           <Image source={{ uri: image }} style={styles.imagePreview} />
         ) : (
-          <View style={[styles.imagePreview, styles.placeholder]}>
-            <Text style={styles.placeholderText}>No Image</Text>
+          <View style={styles.imagePlaceholder}>
+            <Text style={typography.small}>No Image</Text>
           </View>
         )}
-
-        <TouchableOpacity onPress={handleImageSelect} style={styles.imageOverlayButton}>
-          <Ionicons name="camera-outline" size={18} color="#fff" />
+        <TouchableOpacity onPress={handleImageSelect} style={styles.iconButton}>
+          <Ionicons name="camera-outline" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
 
-      {/* Title Input */}
-      <Text style={typography.label}>Item Name</Text>
-      <TextInput
-        placeholder="Title"
-        value={title}
-        onChangeText={setTitle}
-        style={styles.input}
-        placeholderTextColor={colors.textSecondary}
-      />
+      <View style={{ gap: 16 }}>
+        <Input placeholder="Item Name" value={title} onChangeText={setTitle}    error={showErrors && !title ? 'Title Required' : ''} />
+        <Input placeholder="Location" value={location} onChangeText={setLocation}  error={showErrors && !location ? 'Location Required' : ''} />
+      </View>
 
-      {/* Location Input */}
-      <Text style={typography.label}>Location</Text>
-      <TextInput
-        placeholder="Location"
-        value={location}
-        onChangeText={setLocation}
-        style={styles.input}
-        placeholderTextColor={colors.textSecondary}
-      />
 
-      {/* Button */}
-      <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-        <Text style={styles.addButtonText}>Add Item</Text>
-      </TouchableOpacity>
+      <Button label="Add Item" onPress={handleAdd} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: colors.background },
-  heading: { ...typography.title, marginBottom: 20 },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.inputBorder || '#ccc',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    fontSize: 15,
-    color: colors.textPrimary,
-    backgroundColor: colors.inputBackground,
-    marginBottom: 16,
-  },
+  heading: { ...typography.heading, marginBottom: 20 },
   imageWrapper: {
     position: 'relative',
     width: 100,
@@ -147,36 +122,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderColor: '#ccc',
     borderWidth: 1,
-    backgroundColor: '#eee',
   },
-  placeholder: {
+  imagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+    backgroundColor: '#eee',
     justifyContent: 'center',
     alignItems: 'center',
+    borderColor: '#ccc',
+    borderWidth: 1,
   },
-  placeholderText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
-  imageOverlayButton: {
+  iconButton: {
     position: 'absolute',
     top: 6,
     right: 6,
     backgroundColor: 'rgba(0,0,0,0.6)',
     padding: 6,
     borderRadius: 16,
-  },
-  addButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    marginTop: 16,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

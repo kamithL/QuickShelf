@@ -1,3 +1,4 @@
+// src/screens/HomeScreen.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -13,11 +14,10 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Snackbar } from 'react-native-paper';
-
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import ItemCard from '../components/ItemCard';
@@ -36,32 +36,12 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       const fetchItems = async () => {
-        const savedItems = await loadItems();
-        setItems(savedItems);
+        const saved = await loadItems();
+        setItems(saved);
       };
       fetchItems();
     }, [])
   );
-
-  const handleDelete = (id: string) => {
-    const itemToDelete = items.find(i => i.id === id);
-    if (!itemToDelete) return;
-
-    Alert.alert('Delete Item', 'Are you sure you want to delete this item?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          const updated = items.filter(i => i.id !== id);
-          setItems(updated);
-          await saveItems(updated);
-          setDeletedItem(itemToDelete);
-          setSnackbarVisible(true);
-        },
-      },
-    ]);
-  };
 
   const pickImage = () => {
     Alert.alert('Select Image', 'Choose an option', [
@@ -77,13 +57,11 @@ export default function HomeScreen() {
       Alert.alert('Permission Denied', 'Camera access is required.');
       return;
     }
-
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
       allowsEditing: true,
     });
-
     handleImageResult(result);
   };
 
@@ -93,18 +71,16 @@ export default function HomeScreen() {
       Alert.alert('Permission Denied', 'Gallery access is required.');
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
       allowsEditing: true,
     });
-
     handleImageResult(result);
   };
 
   const handleImageResult = async (result: ImagePicker.ImagePickerResult) => {
-    if (!result.canceled && result.assets && result.assets.length > 0) {
+    if (!result.canceled && result.assets?.[0]) {
       const manipulated = await ImageManipulator.manipulateAsync(
         result.assets[0].uri,
         [{ resize: { width: 800 } }],
@@ -114,20 +90,32 @@ export default function HomeScreen() {
     }
   };
 
-  const renderRightActions = (id: string) => (
-    <TouchableOpacity
-      onPress={() => handleDelete(id)}
-      activeOpacity={0.8}
-      style={styles.actionButton}
-    >
-      <Ionicons name="trash-outline" size={24} color="#fff" />
-    </TouchableOpacity>
-  );
+  const handleDelete = (id: string) => {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    Alert.alert('Delete Item', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const updated = items.filter(i => i.id !== id);
+          setItems(updated);
+          await saveItems(updated);
+          setDeletedItem(item);
+          setSnackbarVisible(true);
+        },
+      },
+    ]);
+  };
 
   const renderItem = ({ item }: { item: any }) => (
     <Swipeable
-      renderRightActions={() => renderRightActions(item.id)}
-      overshootRight={false}
+      renderRightActions={() => (
+        <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item.id)}>
+          <Ionicons name="trash-outline" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
     >
       <TouchableOpacity
         onPress={() => {
@@ -153,28 +141,28 @@ export default function HomeScreen() {
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search items..."
+          placeholderTextColor={colors.textSecondary}
           style={styles.searchInputWithIcon}
-          placeholderTextColor="#aaa"
         />
       </View>
 
       <FlatList
-        data={items.filter(item =>
-          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.location?.toLowerCase().includes(searchQuery.toLowerCase())
+        data={items.filter(i =>
+          i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          i.location?.toLowerCase().includes(searchQuery.toLowerCase())
         )}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         renderItem={renderItem}
         ListEmptyComponent={<Text style={styles.empty}>No items added yet.</Text>}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
 
+      {/* Edit Modal */}
       <Modal visible={!!editingItem} animationType="slide" transparent>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalBox}>
             <Text style={[typography.heading, { marginBottom: 12 }]}>Edit Item</Text>
 
-            {/* Image */}
             <Text style={typography.label}>Image</Text>
             <View style={styles.imageWrapper}>
               {editedImage ? (
@@ -188,47 +176,40 @@ export default function HomeScreen() {
                 onPress={editedImage ? () => setEditedImage(null) : pickImage}
                 style={styles.imageOverlayButton}
               >
-                <Ionicons
-                  name={editedImage ? 'trash-outline' : 'camera-outline'}
-                  size={18}
-                  color="#fff"
-                />
+                <Ionicons name={editedImage ? 'trash-outline' : 'camera-outline'} size={18} color="#fff" />
               </TouchableOpacity>
             </View>
 
-            {/* Title */}
             <Text style={typography.label}>Item Name</Text>
             <TextInput
+              style={styles.input}
+              placeholder="Title"
               value={editedTitle}
               onChangeText={setEditedTitle}
-              placeholder="Title"
-              style={styles.input}
               placeholderTextColor={colors.textSecondary}
             />
 
-            {/* Location */}
             <Text style={typography.label}>Location</Text>
             <TextInput
+              style={styles.input}
+              placeholder="Location"
               value={editedLocation}
               onChangeText={setEditedLocation}
-              placeholder="Location"
-              style={styles.input}
               placeholderTextColor={colors.textSecondary}
             />
 
-            {/* Action Buttons */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+            <View style={styles.modalActions}>
               <Button title="Cancel" onPress={() => setEditingItem(null)} />
               <Button
                 title="Save"
                 onPress={async () => {
-                  const updatedItems = items.map((i) =>
+                  const updated = items.map(i =>
                     i.id === editingItem.id
                       ? { ...i, title: editedTitle, location: editedLocation, image: editedImage }
                       : i
                   );
-                  setItems(updatedItems);
-                  await saveItems(updatedItems);
+                  setItems(updated);
+                  await saveItems(updated);
                   setEditingItem(null);
                 }}
               />
@@ -237,11 +218,11 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-
+      {/* Snackbar */}
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
-        duration={5000}
+        duration={4000}
         action={{
           label: 'Undo',
           onPress: () => {
@@ -273,31 +254,73 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 12,
   },
-  searchIcon: {
-    marginRight: 6,
-  },
-  searchInputWithIcon: {
-    flex: 1,
-    height: 40,
-    fontSize: 15,
-    color: colors.textPrimary,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#e0e0e0',
-    marginLeft: 80,
-  },
-  row: {
-    height: 80,
-    backgroundColor: colors.cardBackground,
-    justifyContent: 'center',
-  },
+  searchIcon: { marginRight: 6 },
+  searchInputWithIcon: { flex: 1, height: 40, fontSize: 15, color: colors.textPrimary },
+  row: { backgroundColor: colors.cardBackground },
+  separator: { height: 1, backgroundColor: '#e0e0e0', marginLeft: 80 },
   actionButton: {
     backgroundColor: colors.danger,
     width: 64,
-    height: 80,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBox: {
+    width: '90%',
+    backgroundColor: colors.cardBackground,
+    borderRadius: 12,
+    padding: 20,
+  },
+  imageWrapper: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+    marginBottom: 12,
+  },
+  modalImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+    backgroundColor: '#eee',
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  imageOverlayButton: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: 8,
+    borderRadius: 16,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.inputBorder || '#ccc',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontSize: 15,
+    color: colors.textPrimary,
+    backgroundColor: colors.inputBackground,
+    marginBottom: 12,
+  },
+  placeholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#eee',
+    borderRadius: 8,
+    width: 100,
+    height: 100,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
   },
   snackbar: {
     borderRadius: 12,
@@ -308,61 +331,4 @@ const styles = StyleSheet.create({
     right: 16,
     zIndex: 75,
   },
-  modalBackdrop: {
-  flex: 1,
-  backgroundColor: 'rgba(0,0,0,0.3)',
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-modalBox: {
-  width: '90%',
-  backgroundColor: colors.cardBackground,
-  borderRadius: 12,
-  padding: 20,
-},
-imageWrapper: {
-  position: 'relative',
-  width: 100,
-  height: 100,
-  marginBottom: 12,
-  alignSelf: 'flex-start',
-},
-modalImage: {
-  width: '100%',
-  height: '100%',
-  borderRadius: 10,
-  backgroundColor: '#eee',
-  borderWidth: 1,
-  borderColor: '#ccc',
-},
-imageOverlayButton: {
-  position: 'absolute',
-  top: 6,
-  right: 6,
-  backgroundColor: 'rgba(0,0,0,0.6)',
-  padding: 8,
-  borderRadius: 16,
-  zIndex: 10,
-  elevation: 4,
-},
-input: {
-  borderWidth: 1,
-  borderColor: colors.inputBorder || '#ccc',
-  borderRadius: 8,
-  paddingVertical: 10,
-  paddingHorizontal: 12,
-  fontSize: 15,
-  color: colors.textPrimary,
-  backgroundColor: colors.inputBackground,
-  marginBottom: 12,
-},
-placeholder: {
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: '#eee',
-  borderRadius: 8,
-  width: 100,
-  height: 100,
-},
-
 });
