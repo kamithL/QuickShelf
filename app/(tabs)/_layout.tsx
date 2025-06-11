@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import React from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Provider as PaperProvider } from 'react-native-paper';
 export default function TabLayout() {
   return (
+  <PaperProvider>
     <GestureHandlerRootView style={styles.root}>
       <Tabs>
         <Tabs.Screen
@@ -26,6 +29,7 @@ export default function TabLayout() {
         />
       </Tabs>
     </GestureHandlerRootView>
+  </PaperProvider>  
   );
 }
 
