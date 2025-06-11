@@ -1,5 +1,7 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
+import { colors } from '../../theme/colors';
+import { typography } from '../../theme/typography';
 
 interface Item {
   id: string;
@@ -32,49 +34,51 @@ export default function ItemCard({ item }: { item: Item }) {
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
     alignItems: 'center',
-    flex: 1,           // Fill the row
-    height: '100%',    // Stretch with parent
-    backgroundColor: 'transparent', // optional
-    borderWidth:1,
-    borderColor: '#ddd',
-   
+    backgroundColor: colors.cardBackground,
+    padding: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   image: {
     width: 64,
     height: 64,
     borderRadius: 10,
     marginRight: 12,
-    backgroundColor: '#eee',
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: colors.inputBorder || '#ccc',
   },
   placeholder: {
     width: 64,
     height: 64,
     borderRadius: 10,
-    backgroundColor: '#f0f0f0',
-    borderWidth: 1,
-    borderColor: '#ccc',
+    backgroundColor: colors.inputBackground,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.inputBorder || '#ccc',
     marginRight: 12,
   },
   placeholderText: {
-    fontSize: 11,
-    color: '#999',
+    ...typography.small,
+    color: colors.textSecondary,
   },
   details: {
     flex: 1,
   },
   title: {
+    ...typography.body,
     fontWeight: '600',
-    fontSize: 17,
+    color: colors.textPrimary,
     marginBottom: 2,
   },
   location: {
-    fontSize: 14,
-    color: '#666',
+    ...typography.small,
+    color: colors.textSecondary,
   },
 });
