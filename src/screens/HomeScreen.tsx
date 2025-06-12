@@ -38,6 +38,8 @@ export default function HomeScreen() {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [editedImage, setEditedImage] = useState<string | null>(null);
   const swipeableRefs = useRef<Record<string, Swipeable | null>>({});
+  const [selectedLocation, setSelectedLocation] = useState('');
+  const uniqueLocations = Array.from(new Set(items.map(i => i.location).filter(Boolean)));
 
 
 
@@ -179,11 +181,57 @@ export default function HomeScreen() {
           style={styles.searchInputWithIcon}
         />
       </View>
+      <View style={{ marginBottom: 16 }}>
+      <Text style={[typography.label, { marginBottom: 8 }]}>Filter by Location</Text>
+      <View
+        style={{
+          backgroundColor: '#f0f0f0',
+          borderRadius: 8,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 6,
+        }}
+      >
+        {['All', ...uniqueLocations].map((loc) => {
+  const isSelected = selectedLocation === loc || (loc === 'All' && selectedLocation === '');
+  return (
+    <TouchableOpacity
+      key={loc}
+      style={{
+        backgroundColor: isSelected ? colors.primary : '#fff',
+        borderRadius: 16,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderWidth: 1,
+        borderColor: '#ccc',
+        marginRight: 8,
+        marginBottom: 8,
+      }}
+      onPress={() => setSelectedLocation(loc === 'All' ? '' : loc)}
+    >
+      <Text
+        style={{
+          color: isSelected ? '#fff' : '#333',
+          fontWeight: 'bold',
+          fontSize: 14,
+        }}
+      >
+        {loc}
+      </Text>
+    </TouchableOpacity>
+  );
+        })}
+      </View>
+    </View>
         <DraggableFlatList
         data={items.filter(i =>
-          i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          i.location?.toLowerCase().includes(searchQuery.toLowerCase())
-        )}
+                  i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  i.location?.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+                .filter(i => (selectedLocation ? i.location === selectedLocation : true))
+              }
         keyExtractor={(item) => item.id}
         onDragEnd={({ data }) => {
           setItems(data);
