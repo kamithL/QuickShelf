@@ -1,43 +1,59 @@
-// components/Input.tsx
+// src/components/Input.tsx
 import React from 'react';
-import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInputProps,
+  View,
+} from 'react-native';
 import { colors } from '../../theme/colors';
 
-interface InputProps extends TextInputProps {
+interface Props extends TextInputProps {
   error?: string;
+  rightIcon?: React.ReactNode; // 👈 NEW
 }
 
-export default function Input({ error, style, ...props }: InputProps) {
+export default function Input({ error, rightIcon, style, ...props }: Props) {
   return (
     <View style={styles.wrapper}>
-      <TextInput
-        style={[styles.input, error && styles.inputError, style]}
-        placeholderTextColor={colors.textSecondary}
-        {...props}
-      />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={[styles.input, style]}
+          placeholderTextColor={colors.textSecondary}
+          {...props}
+        />
+        {rightIcon && <View style={styles.rightIcon}>{rightIcon}</View>}
+      </View>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: 16,
+    width: '100%',
+  },
+  inputWrapper: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.inputBackground,
+    borderWidth: 1,
+    borderColor: colors.inputBorder || '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   input: {
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    flex: 1,
     fontSize: 15,
     color: colors.textPrimary,
-    backgroundColor: colors.inputBackground,
   },
-  inputError: {
-    borderColor: colors.danger,
+  rightIcon: {
+    marginLeft: 8,
   },
-  errorText: {
+  error: {
     color: colors.danger,
     fontSize: 12,
     marginTop: 4,
