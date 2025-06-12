@@ -8,7 +8,6 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   Button,
-  FlatList,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -20,12 +19,14 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Snackbar } from 'react-native-paper';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import ItemCard from '../components/ItemCard';
 import { loadItems, saveItems } from '../services/storage';
+
 
 export default function HomeScreen() {
   const [items, setItems] = useState<any[]>([]);
@@ -179,7 +180,7 @@ export default function HomeScreen() {
         />
       </View>
 
-      <FlatList
+      {/* <FlatList
         key={items.length} 
         data={items.filter(i =>
           i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -189,7 +190,63 @@ export default function HomeScreen() {
         renderItem={renderItem}
         ListEmptyComponent={<Text style={styles.empty}>No items added yet.</Text>}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+      /> */}
+
+
+        <DraggableFlatList
+        data={items.filter(i =>
+          i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          i.location?.toLowerCase().includes(searchQuery.toLowerCase())
+        )}
+        keyExtractor={(item) => item.id}
+        onDragEnd={({ data }) => {
+          setItems(data);
+          saveItems(data); // ✅ persist new order
+        }}
+        renderItem={({ item, drag, isActive }) => (
+          <ScaleDecorator>
+            <Swipeable
+              renderRightActions={() => (
+                <View style={{ flexDirection: 'row' }}>
+                  <TouchableOpacity
+                    onPress={() => handleEdit(item)}
+                    style={[styles.actionButton, { backgroundColor: colors.info }]}
+                  >
+                    <Ionicons name="create-outline" size={24} color="#fff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDelete(item.id)}
+                    style={[styles.actionButton, { backgroundColor: colors.danger }]}
+                  >
+                    <Ionicons name="trash-outline" size={24} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            >
+              <TouchableOpacity
+                onLongPress={drag} // 👈 Enable drag on long press
+                delayLongPress={200}
+                onPress={() => {
+                  router.push({
+                    pathname: '/item-detail',
+                    params: {
+                      title: item.title,
+                      location: item.location,
+                      image: item.image,
+                    },
+                  });
+                }}
+              >
+                <View style={styles.row}>
+                  <ItemCard item={item} />
+                </View>
+              </TouchableOpacity>
+            </Swipeable>
+          </ScaleDecorator>
+        )}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
+
 
       {/* Edit Modal */}
         <Modal visible={!!editingItem} animationType="slide" transparent>
