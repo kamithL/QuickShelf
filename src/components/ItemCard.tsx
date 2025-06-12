@@ -8,6 +8,7 @@ interface Item {
   title: string;
   location?: string;
   image?: string;
+  category?:string;
 }
 
 export default function ItemCard({ item }: { item: Item }) {
@@ -26,7 +27,12 @@ export default function ItemCard({ item }: { item: Item }) {
         {item.location && (
           <Text style={styles.location}>📦 {item.location}</Text>
         )}
+        {item.category ? (
+        <Text style={styles.category}>🏷️ {item.category}</Text>
+         ) : null}
       </View>
+   
+
     </View>
   );
 }
@@ -81,4 +87,10 @@ const styles = StyleSheet.create({
     ...typography.small,
     color: colors.textSecondary,
   },
+  category: {
+  color: '#888',
+  fontStyle: 'italic',
+  marginTop: 2,
+},
+
 });
