@@ -179,20 +179,6 @@ export default function HomeScreen() {
           style={styles.searchInputWithIcon}
         />
       </View>
-
-      {/* <FlatList
-        key={items.length} 
-        data={items.filter(i =>
-          i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          i.location?.toLowerCase().includes(searchQuery.toLowerCase())
-        )}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        ListEmptyComponent={<Text style={styles.empty}>No items added yet.</Text>}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      /> */}
-
-
         <DraggableFlatList
         data={items.filter(i =>
           i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -249,83 +235,79 @@ export default function HomeScreen() {
 
 
       {/* Edit Modal */}
-        <Modal visible={!!editingItem} animationType="slide" transparent>
-  <KeyboardAvoidingView
-    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    style={styles.modalBackdrop}
-  >
-    <View style={styles.modalBox}>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 20 }}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text style={[typography.heading, { marginBottom: 12 }]}>Edit Item</Text>
-
-        <Text style={typography.label}>Image</Text>
-        <View style={styles.imageWrapper}>
-          {editedImage ? (
-            <Image source={{ uri: editedImage }} style={styles.modalImage} />
-          ) : (
-            <View style={[styles.modalImage, styles.placeholder]}>
-              <Text style={typography.small}>No Image</Text>
-            </View>
-          )}
-          <TouchableOpacity
-            onPress={editedImage ? () => setEditedImage(null) : pickImage}
-            style={styles.imageOverlayButton}
+      <Modal visible={!!editingItem} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={80}
+        >
+          <ScrollView
+            contentContainerStyle={styles.modalBox}
+            keyboardShouldPersistTaps="handled"
           >
-            <Ionicons
-              name={editedImage ? 'trash-outline' : 'camera-outline'}
-              size={18}
-              color="#fff"
+            <Text style={[typography.heading, { marginBottom: 12 }]}>Edit Item</Text>
+
+            <Text style={typography.label}>Image</Text>
+            <View style={styles.imageWrapper}>
+              {editedImage ? (
+                <Image source={{ uri: editedImage }} style={styles.modalImage} />
+              ) : (
+                <View style={[styles.modalImage, styles.placeholder]}>
+                  <Text style={typography.small}>No Image</Text>
+                </View>
+              )}
+              <TouchableOpacity
+                onPress={editedImage ? () => setEditedImage(null) : pickImage}
+                style={styles.imageOverlayButton}
+              >
+                <Ionicons name={editedImage ? 'trash-outline' : 'camera-outline'} size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={typography.label}>Item Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Title"
+              value={editedTitle}
+              onChangeText={setEditedTitle}
+              placeholderTextColor={colors.textSecondary}
             />
-          </TouchableOpacity>
-        </View>
 
-        <Text style={typography.label}>Item Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Title"
-          value={editedTitle}
-          onChangeText={setEditedTitle}
-          placeholderTextColor={colors.textSecondary}
-        />
+            <Text style={typography.label}>Location</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Location"
+              value={editedLocation}
+              onChangeText={setEditedLocation}
+              placeholderTextColor={colors.textSecondary}
+            />
 
-        <Text style={typography.label}>Location</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Location"
-          value={editedLocation}
-          onChangeText={setEditedLocation}
-          placeholderTextColor={colors.textSecondary}
-        />
+            <View style={styles.modalActions}>
+              <Button title="Cancel" onPress={() => setEditingItem(null)} />
+              <Button
+                title="Save"
+                onPress={async () => {
+                  const updated = items.map((i) =>
+                    i.id === editingItem.id
+                      ? { ...i, title: editedTitle, location: editedLocation, image: editedImage }
+                      : i
+                  );
+                  setItems(updated);
+                  await saveItems(updated);
+                  if (editingItem?.id && swipeableRefs.current[editingItem.id]) {
+                      swipeableRefs.current[editingItem.id]?.close();
+                  }
+                  setEditingItem(null);
+                  setEditedTitle('');
+                  setEditedLocation('');
+                  setEditedImage(null);
+                }}
+              />
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
 
-        <View style={styles.modalActions}>
-          <Button title="Cancel" onPress={() => setEditingItem(null)} />
-          <Button
-            title="Save"
-            onPress={async () => {
-              const updated = items.map(i =>
-                i.id === editingItem.id
-                  ? { ...i, title: editedTitle, location: editedLocation, image: editedImage }
-                  : i
-              );
-              setItems(updated);
-              await saveItems(updated);
-               if (editingItem?.id && swipeableRefs.current[editingItem.id]) {
-                swipeableRefs.current[editingItem.id]?.close();
-              }
-              setEditingItem(null);
-              setEditedTitle('');
-              setEditedLocation('');
-              setEditedImage(null);
-            }}
-          />
-        </View>
-      </ScrollView>
-    </View>
-  </KeyboardAvoidingView>
-</Modal>
 
       {/* Snackbar */}
       <Snackbar
