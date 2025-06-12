@@ -16,4 +16,5 @@ export const colors = {
   danger: '#ff3b30',
   success: '#34c759',
   shadow: 'rgba(0, 0, 0, 0.1)',  
+  info: '#17A2B8',
 };

@@ -3,18 +3,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useCallback, useState } from 'react';
+import { router } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   Button,
   FlatList,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Snackbar } from 'react-native-paper';
@@ -32,6 +36,9 @@ export default function HomeScreen() {
   const [deletedItem, setDeletedItem] = useState<any | null>(null);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [editedImage, setEditedImage] = useState<string | null>(null);
+  const swipeableRefs = useRef<Record<string, Swipeable | null>>({});
+
+
 
   useFocusEffect(
     useCallback(() => {
@@ -109,20 +116,46 @@ export default function HomeScreen() {
     ]);
   };
 
+  const handleEdit = (item: any) => {
+      setEditingItem(item);
+      setEditedTitle(item.title);
+      setEditedLocation(item.location);
+      setEditedImage(item.image || null);
+  };
+
   const renderItem = ({ item }: { item: any }) => (
     <Swipeable
+      ref={(ref) => {
+        swipeableRefs.current[item.id] = ref;
+      }}
+      overshootRight={false}
       renderRightActions={() => (
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item.id)}>
-          <Ionicons name="trash-outline" size={24} color="#fff" />
-        </TouchableOpacity>
+      <View style={{ flexDirection: 'row' }}>
+          <TouchableOpacity
+            onPress={() => handleEdit(item)}
+            style={[styles.actionButton, { backgroundColor: colors.info }]}
+          >
+            <Ionicons name="create-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleDelete(item.id)}
+            style={[styles.actionButton, { backgroundColor: colors.danger }]}
+          >
+            <Ionicons name="trash-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
       )}
     >
       <TouchableOpacity
-        onPress={() => {
-          setEditingItem(item);
-          setEditedTitle(item.title);
-          setEditedLocation(item.location);
-          setEditedImage(item.image || null);
+       onPress={() => {
+          router.push({
+            pathname: '/item-detail',
+            params: {
+              title: item.title,
+              location: item.location,
+              image: item.image,
+            },
+          });
         }}
       >
         <View style={styles.row}>
@@ -147,6 +180,7 @@ export default function HomeScreen() {
       </View>
 
       <FlatList
+        key={items.length} 
         data={items.filter(i =>
           i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           i.location?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -158,65 +192,83 @@ export default function HomeScreen() {
       />
 
       {/* Edit Modal */}
-      <Modal visible={!!editingItem} animationType="slide" transparent>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalBox}>
-            <Text style={[typography.heading, { marginBottom: 12 }]}>Edit Item</Text>
+        <Modal visible={!!editingItem} animationType="slide" transparent>
+  <KeyboardAvoidingView
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    style={styles.modalBackdrop}
+  >
+    <View style={styles.modalBox}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 20 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={[typography.heading, { marginBottom: 12 }]}>Edit Item</Text>
 
-            <Text style={typography.label}>Image</Text>
-            <View style={styles.imageWrapper}>
-              {editedImage ? (
-                <Image source={{ uri: editedImage }} style={styles.modalImage} />
-              ) : (
-                <View style={[styles.modalImage, styles.placeholder]}>
-                  <Text style={typography.small}>No Image</Text>
-                </View>
-              )}
-              <TouchableOpacity
-                onPress={editedImage ? () => setEditedImage(null) : pickImage}
-                style={styles.imageOverlayButton}
-              >
-                <Ionicons name={editedImage ? 'trash-outline' : 'camera-outline'} size={18} color="#fff" />
-              </TouchableOpacity>
+        <Text style={typography.label}>Image</Text>
+        <View style={styles.imageWrapper}>
+          {editedImage ? (
+            <Image source={{ uri: editedImage }} style={styles.modalImage} />
+          ) : (
+            <View style={[styles.modalImage, styles.placeholder]}>
+              <Text style={typography.small}>No Image</Text>
             </View>
-
-            <Text style={typography.label}>Item Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Title"
-              value={editedTitle}
-              onChangeText={setEditedTitle}
-              placeholderTextColor={colors.textSecondary}
+          )}
+          <TouchableOpacity
+            onPress={editedImage ? () => setEditedImage(null) : pickImage}
+            style={styles.imageOverlayButton}
+          >
+            <Ionicons
+              name={editedImage ? 'trash-outline' : 'camera-outline'}
+              size={18}
+              color="#fff"
             />
-
-            <Text style={typography.label}>Location</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Location"
-              value={editedLocation}
-              onChangeText={setEditedLocation}
-              placeholderTextColor={colors.textSecondary}
-            />
-
-            <View style={styles.modalActions}>
-              <Button title="Cancel" onPress={() => setEditingItem(null)} />
-              <Button
-                title="Save"
-                onPress={async () => {
-                  const updated = items.map(i =>
-                    i.id === editingItem.id
-                      ? { ...i, title: editedTitle, location: editedLocation, image: editedImage }
-                      : i
-                  );
-                  setItems(updated);
-                  await saveItems(updated);
-                  setEditingItem(null);
-                }}
-              />
-            </View>
-          </View>
+          </TouchableOpacity>
         </View>
-      </Modal>
+
+        <Text style={typography.label}>Item Name</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Title"
+          value={editedTitle}
+          onChangeText={setEditedTitle}
+          placeholderTextColor={colors.textSecondary}
+        />
+
+        <Text style={typography.label}>Location</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Location"
+          value={editedLocation}
+          onChangeText={setEditedLocation}
+          placeholderTextColor={colors.textSecondary}
+        />
+
+        <View style={styles.modalActions}>
+          <Button title="Cancel" onPress={() => setEditingItem(null)} />
+          <Button
+            title="Save"
+            onPress={async () => {
+              const updated = items.map(i =>
+                i.id === editingItem.id
+                  ? { ...i, title: editedTitle, location: editedLocation, image: editedImage }
+                  : i
+              );
+              setItems(updated);
+              await saveItems(updated);
+               if (editingItem?.id && swipeableRefs.current[editingItem.id]) {
+                swipeableRefs.current[editingItem.id]?.close();
+              }
+              setEditingItem(null);
+              setEditedTitle('');
+              setEditedLocation('');
+              setEditedImage(null);
+            }}
+          />
+        </View>
+      </ScrollView>
+    </View>
+  </KeyboardAvoidingView>
+</Modal>
 
       {/* Snackbar */}
       <Snackbar
