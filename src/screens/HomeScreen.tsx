@@ -9,9 +9,7 @@ import {
   Alert,
   Button,
   Image,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -291,56 +289,93 @@ export default function HomeScreen() {
 
 
       {/* Edit Modal */}
-      <Modal visible={!!editingItem} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          style={styles.modalBackdrop}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={80}
-        >
+     <Modal visible={!!editingItem} animationType="fade" transparent>
+      <View style={styles.modalBackdrop}>
+        <View style={[styles.modalContainer, { backgroundColor: colors.cardBackground }]}>
+          
+          {/* Header with title + close button */}
+          <View style={styles.modalHeader}>
+            <Text style={[typo.heading, { color: colors.textPrimary }]}>
+              Edit Item
+            </Text>
+            <TouchableOpacity onPress={() => setEditingItem(null)}>
+              <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Content */}
           <ScrollView
-            contentContainerStyle={[styles.modalBox,{ backgroundColor: colors.cardBackground,}]}
+            style={styles.modalContent}
+            contentContainerStyle={{ paddingBottom: 20 }}
             keyboardShouldPersistTaps="handled"
           >
-            <Text style={[typo.heading, { marginBottom: 12 }]}>Edit Item</Text>
-
-            <Text style={typo.label}>Image</Text>
+            {/* Image preview + delete */}
             <View style={styles.imageWrapper}>
               {editedImage ? (
                 <Image source={{ uri: editedImage }} style={styles.modalImage} />
               ) : (
-                <View style={[styles.modalImage, styles.placeholder]}>
-                  <Text style={typo.small}>No Image</Text>
+                <View
+                  style={[
+                    styles.modalImage,
+                    { backgroundColor: colors.inputBackground, borderColor: colors.border },
+                  ]}
+                >
+                  <Text style={[typo.small, { color: colors.textSecondary }]}>
+                    No Image
+                  </Text>
                 </View>
               )}
               <TouchableOpacity
                 onPress={editedImage ? () => setEditedImage(null) : pickImage}
                 style={styles.imageOverlayButton}
               >
-                <Ionicons name={editedImage ? 'trash-outline' : 'camera-outline'} size={18} color="#fff" />
+                <Ionicons
+                  name={editedImage ? 'trash-outline' : 'camera-outline'}
+                  size={20}
+                  color={colors.background}
+                />
               </TouchableOpacity>
             </View>
 
-            <Text style={typo.label}>Item Name</Text>
+            {/* Item Name */}
+            <Text style={[typo.label, { color: colors.textSecondary }]}>Item Name</Text>
             <TextInput
-               style={[styles.input,{   borderColor: colors.inputBorder || '#ccc',   color: colors.textPrimary,backgroundColor: colors.inputBackground,}]}
-              placeholder="Title"
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.inputBackground,
+                  borderColor: colors.inputBorder,
+                  color: colors.textPrimary,
+                },
+              ]}
               value={editedTitle}
               onChangeText={setEditedTitle}
+              placeholder="Enter name"
               placeholderTextColor={colors.textSecondary}
             />
 
-            <Text style={typo.label}>Location</Text>
+            {/* Location */}
+            <Text style={[typo.label, { color: colors.textSecondary }]}>Location</Text>
             <TextInput
-              style={[styles.input,{   borderColor: colors.inputBorder || '#ccc',   color: colors.textPrimary,backgroundColor: colors.inputBackground,}]}
-              placeholder="Location"
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.inputBackground,
+                  borderColor: colors.inputBorder,
+                  color: colors.textPrimary,
+                },
+              ]}
               value={editedLocation}
               onChangeText={setEditedLocation}
+              placeholder="Enter location"
               placeholderTextColor={colors.textSecondary}
             />
+          </ScrollView>
 
-            <View style={styles.modalActions}>
-              <Button title="Cancel" onPress={() => setEditingItem(null)} />
-              <Button
+          {/* Actions */}
+          <View style={styles.modalActions}>
+            <Button title="Cancel" onPress={() => setEditingItem(null)} />
+            <Button
                 title="Save"
                 onPress={async () => {
                   const updated = items.map((i) =>
@@ -359,10 +394,10 @@ export default function HomeScreen() {
                   setEditedImage(null);
                 }}
               />
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Modal>
+          </View>
+        </View>
+      </View>
+    </Modal>
 
 
       {/* Snackbar */}
@@ -472,4 +507,28 @@ const styles = StyleSheet.create({
     zIndex: 75,
   },
   heading:{ marginBottom: 12 },
+   actionText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+   modalContainer: {
+    width: '85%',
+    maxHeight: '80%',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+   modalContent: {
+    flexGrow: 0,
+  },
 });
