@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -80,7 +81,13 @@ export default function AddItemScreen() {
     const newItem = { id: uuid.v4().toString(), title, location, category, image };
     const existing = await loadItems();
     await saveItems([...existing, newItem]);
-    setTitle(''); setLocation(''); setCategory(''); setImage(null); setShowErrors(false);
+    setTitle(''); 
+    setLocation(''); 
+    setCategory(''); 
+    setImage(null); 
+    setShowErrors(false);
+    setShowLocationDropdown(false);
+    setShowLocationDropdown(false)
     router.replace('/');
   };
 
@@ -97,8 +104,17 @@ export default function AddItemScreen() {
 
         {/* Image Picker */}
         <View style={styles.imageWrapper}>
-          {/* ... */}
-        </View>
+        {image ? (
+          <Image source={{ uri: image }} style={styles.imagePreview} />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Text style={typo.small}>No Image</Text>
+          </View>
+        )}
+        <TouchableOpacity onPress={handleImageSelect} style={styles.iconButton}>
+          <Ionicons name="camera-outline" size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
         <View style={{ gap: 16 }}>
           <Input

@@ -191,7 +191,7 @@ export default function HomeScreen() {
       <Text style={[typo.label, { marginBottom: 8 }]}>Filter by Location</Text>
       <View
         style={{
-          backgroundColor: '#f0f0f0',
+          backgroundColor: colors.cardBackground,
           borderRadius: 8,
           paddingHorizontal: 12,
           paddingVertical: 8,
@@ -284,6 +284,8 @@ export default function HomeScreen() {
             </Swipeable>
           </ScaleDecorator>
         )}
+        contentContainerStyle={{ paddingBottom: 180 }} 
+        keyboardShouldPersistTaps="handled"
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
 
