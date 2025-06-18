@@ -190,11 +190,13 @@ export default function HomeScreen() {
             <Text style={[typo.small, { color: colors.textSecondary, marginLeft: 4 }]}>
               {item.category || '—'}
             </Text>
+          
+          </View>
+            <View style={styles.metaRow}>
             <Ionicons
               name="location-outline"
               size={14}
               color={colors.textSecondary}
-              style={{ marginLeft: 12 }}
             />
             <Text style={[typo.small, { color: colors.textSecondary, marginLeft: 4 }]}>
               {item.location || '—'}

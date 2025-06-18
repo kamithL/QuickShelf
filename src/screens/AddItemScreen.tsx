@@ -1,7 +1,7 @@
 // src/screens/AddItemScreen.tsx
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -25,7 +25,6 @@ import { loadItems, saveItems } from '../services/storage';
 export default function AddItemScreen() {
   const { colors } = useTheme();
   const typo = useTypography();
-  // now pass both colors & typo into your dynamic stylesheet
   const styles = getStyles(colors, typo);
 
   const [title, setTitle] = useState('');
@@ -38,6 +37,12 @@ export default function AddItemScreen() {
   const [categorySuggestions, setCategorySuggestions] = useState<string[]>([]);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
+  // reset dropdowns on focus
+  useFocusEffect(useCallback(() => {
+    setShowLocationDropdown(false);
+    setShowCategoryDropdown(false);
+  }, []));
 
   useEffect(() => {
     (async () => {
@@ -58,15 +63,15 @@ export default function AddItemScreen() {
     cat.toLowerCase().includes(category.toLowerCase())
   );
 
-  const handleImageSelect = () =>
+  const pickImage = () =>
     Alert.alert('Select Image', 'Choose a source', [
       { text: 'Camera', onPress: openCamera },
       { text: 'Gallery', onPress: openGallery },
       { text: 'Cancel', style: 'cancel' },
     ]);
   const openCamera = async () => {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
+    const { granted } = await ImagePicker.requestCameraPermissionsAsync();
+    if (!granted) {
       Alert.alert('Permission required', 'Camera access is needed to take photos.');
       return;
     }
@@ -74,8 +79,8 @@ export default function AddItemScreen() {
     if (!result.canceled) setImage(result.assets[0].uri);
   };
   const openGallery = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
+    const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!granted) {
       Alert.alert('Permission required', 'Media library access is needed to select photos.');
       return;
     }
@@ -91,6 +96,8 @@ export default function AddItemScreen() {
     const newItem = { id: uuid.v4().toString(), title, location, category, image };
     const existing = await loadItems();
     await saveItems([...existing, newItem]);
+
+    // reset form
     setTitle(''); 
     setLocation(''); 
     setCategory(''); 
@@ -98,10 +105,11 @@ export default function AddItemScreen() {
     setShowErrors(false);
     setShowLocationDropdown(false);
     setShowCategoryDropdown(false);
+
     router.replace('/');
   };
 
- return (
+  return (
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -114,17 +122,20 @@ export default function AddItemScreen() {
 
         {/* Image Picker */}
         <View style={styles.imageWrapper}>
-        {image ? (
-          <Image source={{ uri: image }} style={styles.imagePreview} />
-        ) : (
-          <View style={styles.imagePlaceholder}>
-            <Text style={typo.small}>No Image</Text>
-          </View>
-        )}
-        <TouchableOpacity onPress={handleImageSelect} style={styles.iconButton}>
-          <Ionicons name="camera-outline" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
+          {image ? (
+            <>
+              <Image source={{ uri: image }} style={styles.imagePreview} />
+              <TouchableOpacity onPress={pickImage} style={[styles.iconButton, { backgroundColor: colors.primary }]}>
+                <Ionicons name="create-outline" size={20} color={colors.background} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity onPress={pickImage} style={styles.imagePlaceholder}>
+              <Ionicons name="camera-outline" size={32} color={colors.textSecondary} />
+              <Text style={styles.placeholderText}>No Image</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         <View style={{ gap: 16 }}>
           <Input
@@ -134,11 +145,12 @@ export default function AddItemScreen() {
             error={showErrors && !title ? 'Title Required' : ''}
           />
 
-                 <View style={styles.relative}>
+          {/* Location with dropdown */}
+          <View style={styles.relative}>
             <Input
               placeholder="Location"
               value={location}
-              onChangeText={(text) => {
+              onChangeText={text => {
                 setLocation(text);
                 setShowLocationDropdown(true);
               }}
@@ -154,7 +166,7 @@ export default function AddItemScreen() {
             />
             {showLocationDropdown && filteredLocationSuggestions.length > 0 && (
               <View style={styles.dropdown}>
-                {filteredLocationSuggestions.map((loc) => (
+                {filteredLocationSuggestions.map(loc => (
                   <TouchableOpacity
                     key={loc}
                     onPress={() => {
@@ -170,11 +182,12 @@ export default function AddItemScreen() {
             )}
           </View>
 
+          {/* Category with dropdown */}
           <View style={styles.relative}>
             <Input
               placeholder="Category"
               value={category}
-              onChangeText={(text) => {
+              onChangeText={text => {
                 setCategory(text);
                 setShowCategoryDropdown(true);
               }}
@@ -190,7 +203,7 @@ export default function AddItemScreen() {
             />
             {showCategoryDropdown && filteredCategorySuggestions.length > 0 && (
               <View style={styles.dropdown}>
-                {filteredCategorySuggestions.map((cat) => (
+                {filteredCategorySuggestions.map(cat => (
                   <TouchableOpacity
                     key={cat}
                     onPress={() => {
@@ -215,7 +228,6 @@ export default function AddItemScreen() {
   );
 }
 
-// 🧠 StyleSheet factory now takes both colors & typography
 const getStyles = (colors: ReturnType<typeof useTheme>['colors'], typo: ReturnType<typeof useTypography>) =>
   StyleSheet.create({
     flex: { flex: 1 },
@@ -225,43 +237,40 @@ const getStyles = (colors: ReturnType<typeof useTheme>['colors'], typo: ReturnTy
       backgroundColor: colors.background,
     },
     heading: {
-      ...typo.heading,           // now available
+      ...typo.heading,
       marginBottom: 20,
       color: colors.textPrimary,
     },
     imageWrapper: {
       position: 'relative',
-      width: 100,
-      height: 100,
+      width: 120,
+      height: 120,
+      alignSelf: 'center',
       marginBottom: 20,
-      alignSelf: 'flex-start',
     },
     imagePreview: {
       width: '100%',
       height: '100%',
-      borderRadius: 8,
-      borderColor: '#ccc',
-      borderWidth: 1,
+      borderRadius: 12,
     },
     imagePlaceholder: {
-      width: '100%',
-      height: '100%',
-      borderRadius: 8,
+      flex: 1,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.inputBackground,
       justifyContent: 'center',
       alignItems: 'center',
-      borderColor: '#ccc',
-      borderWidth: 1,
-      backgroundColor: colors.inputBackground,
     },
     placeholderText: {
-      ...typo.small,            // and here
+      ...typo.small,
       color: colors.textSecondary,
+      marginTop: 8,
     },
     iconButton: {
       position: 'absolute',
       top: 6,
       right: 6,
-      backgroundColor: 'rgba(0,0,0,0.6)',
       padding: 6,
       borderRadius: 16,
     },
@@ -275,7 +284,7 @@ const getStyles = (colors: ReturnType<typeof useTheme>['colors'], typo: ReturnTy
       backgroundColor: colors.cardBackground,
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: '#ccc',
+      borderColor: colors.border,
       paddingVertical: 4,
       maxHeight: 150,
       elevation: 5,
