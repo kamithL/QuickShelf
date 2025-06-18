@@ -65,10 +65,20 @@ export default function AddItemScreen() {
       { text: 'Cancel', style: 'cancel' },
     ]);
   const openCamera = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'Camera access is needed to take photos.');
+      return;
+    }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true });
     if (!result.canceled) setImage(result.assets[0].uri);
   };
   const openGallery = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'Media library access is needed to select photos.');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7, allowsEditing: true });
     if (!result.canceled) setImage(result.assets[0].uri);
   };
