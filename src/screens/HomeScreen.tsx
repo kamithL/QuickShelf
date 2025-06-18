@@ -3,11 +3,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   Button,
+  Dimensions,
+  FlatList,
   Image,
   Modal,
   ScrollView,
@@ -15,408 +17,323 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Snackbar } from 'react-native-paper';
 
 import { useTheme } from '@/theme/ThemeContext';
-import { useTypography } from '../../theme/typography';
-import ItemCard from '../components/ItemCard';
+import { useTypography } from '@/theme/typography';
 import { loadItems, saveItems } from '../services/storage';
 
+const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
-  const { colors } = useTheme(); // 
+  const router = useRouter();
+  const { colors } = useTheme();
   const typo = useTypography();
 
+  // state
   const [items, setItems] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+  const [activeLoc, setActiveLoc] = useState<string>('All');
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [editedTitle, setEditedTitle] = useState('');
   const [editedLocation, setEditedLocation] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [editedImage, setEditedImage] = useState<string | null>(null);
   const [deletedItem, setDeletedItem] = useState<any | null>(null);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
-  const [editedImage, setEditedImage] = useState<string | null>(null);
   const swipeableRefs = useRef<Record<string, Swipeable | null>>({});
-  const [selectedLocation, setSelectedLocation] = useState('');
-  const uniqueLocations = Array.from(new Set(items.map(i => i.location).filter(Boolean)));
 
+  // load on focus
+  useFocusEffect(useCallback(() => {
+    (async () => {
+      const data = await loadItems();
+      setItems(data);
+    })();
+  }, []));
 
+  // chip list
+  const uniqueLocs = ['All', ...Array.from(new Set(items.map(i => i.location).filter(Boolean)))];
 
-  useFocusEffect(
-    useCallback(() => {
-      const fetchItems = async () => {
-        const saved = await loadItems();
-        setItems(saved);
-      };
-      fetchItems();
-    }, [])
+  // filters
+  const bySearch = items.filter(i =>
+    i.title.toLowerCase().includes(search.toLowerCase()) ||
+    i.location?.toLowerCase().includes(search.toLowerCase())
   );
+  const byLocation = activeLoc === 'All'
+    ? bySearch
+    : bySearch.filter(i => i.location === activeLoc);
 
-  const pickImage = () => {
-    Alert.alert('Select Image', 'Choose an option', [
-      { text: 'Camera', onPress: openCamera },
-      { text: 'Gallery', onPress: openGallery },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
+  // image pickers
+  const pickImage = () => Alert.alert('Select Image', 'Choose an option', [
+    { text: 'Camera', onPress: openCamera },
+    { text: 'Gallery', onPress: openGallery },
+    { text: 'Cancel', style: 'cancel' },
+  ]);
   const openCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Camera access is required.');
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-      allowsEditing: true,
-    });
-    handleImageResult(result);
+    if (status !== 'granted') return Alert.alert('Permission Denied');
+    const res = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.7 });
+    handleImageResult(res);
   };
-
   const openGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Gallery access is required.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-      allowsEditing: true,
-    });
-    handleImageResult(result);
+    if (status !== 'granted') return Alert.alert('Permission Denied');
+    const res = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, quality: 0.7 });
+    handleImageResult(res);
   };
-
-  const handleImageResult = async (result: ImagePicker.ImagePickerResult) => {
-    if (!result.canceled && result.assets?.[0]) {
-      const manipulated = await ImageManipulator.manipulateAsync(
-        result.assets[0].uri,
+  const handleImageResult = async (res: any) => {
+    if (!res.canceled && res.assets?.[0]) {
+      const m = await ImageManipulator.manipulateAsync(
+        res.assets[0].uri,
         [{ resize: { width: 800 } }],
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
-      setEditedImage(manipulated.uri);
+      setEditedImage(m.uri);
     }
   };
 
-  const handleDelete = (id: string) => {
-    const item = items.find(i => i.id === id);
-    if (!item) return;
+  // delete/edit handlers
+  const handleDelete = (item: any) => {
     Alert.alert('Delete Item', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          const updated = items.filter(i => i.id !== id);
-          setItems(updated);
-          await saveItems(updated);
+          const upd = items.filter(i => i.id !== item.id);
+          setItems(upd);
+          await saveItems(upd);
           setDeletedItem(item);
           setSnackbarVisible(true);
         },
       },
     ]);
   };
-
   const handleEdit = (item: any) => {
-      setEditingItem(item);
-      setEditedTitle(item.title);
-      setEditedLocation(item.location);
-      setEditedImage(item.image || null);
+    setEditingItem(item);
+    setEditedTitle(item.title);
+    setEditedLocation(item.location);
+    setEditedImage(item.image || null);
+  };
+  const onSaveEditedItem = async () => {
+    const upd = items.map(i =>
+      i.id === editingItem.id
+        ? { ...i, title: editedTitle, location: editedLocation, image: editedImage }
+        : i
+    );
+    setItems(upd);
+    await saveItems(upd);
+    swipeableRefs.current[editingItem.id]?.close();
+    setEditingItem(null);
+    setEditedTitle('');
+    setEditedLocation('');
+    setEditedImage(null);
+  };
+
+  // render helpers
+  const renderChip = (loc: string) => {
+    const isSelected = loc === activeLoc;
+    return (
+      <TouchableOpacity
+        key={loc}
+        onPress={() => setActiveLoc(loc)}
+        style={[
+          styles.chip,
+          { backgroundColor: isSelected ? colors.primary : colors.cardBackground },
+        ]}
+      >
+        <Text style={[typo.label, { color: isSelected ? '#fff' : colors.textSecondary }]}>
+          {loc}
+        </Text>
+      </TouchableOpacity>
+    );
   };
 
   const renderItem = ({ item }: { item: any }) => (
     <Swipeable
-      ref={(ref) => {
-        swipeableRefs.current[item.id] = ref;
-      }}
+      ref={ref => { swipeableRefs.current[item.id] = ref; }}
       overshootRight={false}
       renderRightActions={() => (
-      <View style={{ flexDirection: 'row' }}>
+        <View style={{ flexDirection: 'row' }}>
           <TouchableOpacity
             onPress={() => handleEdit(item)}
             style={[styles.actionButton, { backgroundColor: colors.info }]}
           >
-            <Ionicons name="create-outline" size={24} color="#fff" />
+            <Ionicons name="create-outline" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => handleDelete(item.id)}
+            onPress={() => handleDelete(item)}
             style={[styles.actionButton, { backgroundColor: colors.danger }]}
           >
-            <Ionicons name="trash-outline" size={24} color="#fff" />
+            <Ionicons name="trash-outline" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
       )}
     >
       <TouchableOpacity
-       onPress={() => {
-          router.push({
-            pathname: '/item-detail',
-            params: {
-              title: item.title,
-              location: item.location,
-              image: item.image,
-            },
-          });
-        }}
+        style={[styles.card, { backgroundColor: colors.cardBackground }]}
+        onPress={() => router.push({ pathname: '/item-detail', params: { id: item.id } })}
       >
-        <View style={{ backgroundColor: colors.cardBackground }}>
-          <ItemCard item={item} />
+        <View style={[styles.thumb, { backgroundColor: colors.inputBackground }]}>
+          {item.image
+            ? <Image source={{ uri: item.image }} style={styles.image} />
+            : <Text style={[typo.small, { color: colors.textSecondary }]}>No Image</Text>}
         </View>
+        <View style={styles.info}>
+          <Text style={[typo.title, { color: colors.textPrimary }]} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <View style={styles.metaRow}>
+            <Ionicons name="cube-outline" size={14} color={colors.textSecondary} />
+            <Text style={[typo.small, { color: colors.textSecondary, marginLeft: 4 }]}>
+              {item.category || '—'}
+            </Text>
+            <Ionicons
+              name="location-outline"
+              size={14}
+              color={colors.textSecondary}
+              style={{ marginLeft: 12 }}
+            />
+            <Text style={[typo.small, { color: colors.textSecondary, marginLeft: 4 }]}>
+              {item.location || '—'}
+            </Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
     </Swipeable>
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]} >
-      <Text style={[typo.title, styles.heading, { color: colors.textPrimary }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[typo.heading, styles.heading, { color: colors.textPrimary }]}>
         My Inventory
       </Text>
-      <View style={[styles.searchWrapper,{backgroundColor: colors.inputBackground}]}>
-        <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
+
+      <View style={[styles.searchBox, { backgroundColor: colors.inputBackground }]}>
+        <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
         <TextInput
-          value={searchQuery}
-          onChangeText={setSearchQuery}
+          style={[styles.searchInput, { color: colors.textPrimary }]}
+          value={search}
+          onChangeText={setSearch}
           placeholder="Search items..."
           placeholderTextColor={colors.textSecondary}
-          style={[styles.searchInputWithIcon,{color: colors.textPrimary}]}
         />
       </View>
-      <View style={{ marginBottom: 16 }}>
-      <Text style={[typo.label, { marginBottom: 8 }]}>Filter by Location</Text>
-      <View
-        style={{
-          backgroundColor: colors.cardBackground,
-          borderRadius: 8,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: 6,
-        }}
-      >
-        {['All', ...uniqueLocations].map((loc) => {
-  const isSelected = selectedLocation === loc || (loc === 'All' && selectedLocation === '');
-  return (
-    <TouchableOpacity
-      key={loc}
-      style={{
-        backgroundColor: isSelected ? colors.primary : '#fff',
-        borderRadius: 16,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderWidth: 1,
-        borderColor: '#ccc',
-        marginRight: 8,
-        marginBottom: 8,
-      }}
-      onPress={() => setSelectedLocation(loc === 'All' ? '' : loc)}
-    >
-      <Text
-        style={{
-          color: isSelected ? '#fff' : '#333',
-          fontWeight: 'bold',
-          fontSize: 14,
-        }}
-      >
-        {loc}
-      </Text>
-    </TouchableOpacity>
-  );
-        })}
+
+      <View style={styles.chipContainer}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={uniqueLocs}
+          renderItem={({ item }) => renderChip(item)}
+          keyExtractor={l => l}
+        />
       </View>
-    </View>
-        <DraggableFlatList
-        data={items.filter(i =>
-                  i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  i.location?.toLowerCase().includes(searchQuery.toLowerCase())
-                )
-                .filter(i => (selectedLocation ? i.location === selectedLocation : true))
-              }
-        keyExtractor={(item) => item.id}
-        onDragEnd={({ data }) => {
-          setItems(data);
-          saveItems(data); // ✅ persist new order
-        }}
-        renderItem={({ item, drag, isActive }) => (
-          <ScaleDecorator>
-            <Swipeable
-              renderRightActions={() => (
-                <View style={{ flexDirection: 'row' }}>
-                  <TouchableOpacity
-                    onPress={() => handleEdit(item)}
-                    style={[styles.actionButton, { backgroundColor: colors.info }]}
-                  >
-                    <Ionicons name="create-outline" size={24} color="#fff" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleDelete(item.id)}
-                    style={[styles.actionButton, { backgroundColor: colors.danger, }]}
-                  >
-                    <Ionicons name="trash-outline" size={24} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              )}
-            >
-              <TouchableOpacity
-                onLongPress={drag} // 👈 Enable drag on long press
-                delayLongPress={200}
-                onPress={() => {
-                  router.push({
-                    pathname: '/item-detail',
-                    params: {
-                      title: item.title,
-                      location: item.location,
-                      image: item.image,
-                    },
-                  });
-                }}
-              >
-                <View style={{ backgroundColor: colors.cardBackground }}>
-                  <ItemCard item={item} />
-                </View>
-              </TouchableOpacity>
-            </Swipeable>
-          </ScaleDecorator>
-        )}
-        contentContainerStyle={{ paddingBottom: 180 }} 
-        keyboardShouldPersistTaps="handled"
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+
+      <FlatList
+        data={byLocation}
+        keyExtractor={i => i.id}
+        renderItem={renderItem}
+        contentContainerStyle={{ paddingBottom: 100 }}
       />
 
-
       {/* Edit Modal */}
-     <Modal visible={!!editingItem} animationType="fade" transparent>
-      <View style={styles.modalBackdrop}>
-        <View style={[styles.modalContainer, { backgroundColor: colors.cardBackground }]}>
-          
-          {/* Header with title + close button */}
-          <View style={styles.modalHeader}>
-            <Text style={[typo.heading, { color: colors.textPrimary }]}>
-              Edit Item
-            </Text>
-            <TouchableOpacity onPress={() => setEditingItem(null)}>
-              <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Content */}
-          <ScrollView
-            style={styles.modalContent}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Image preview + delete */}
-            <View style={styles.imageWrapper}>
-              {editedImage ? (
-                <Image source={{ uri: editedImage }} style={styles.modalImage} />
-              ) : (
-                <View
-                  style={[
-                    styles.modalImage,
-                    { backgroundColor: colors.inputBackground, borderColor: colors.border },
-                  ]}
-                >
-                  <Text style={[typo.small, { color: colors.textSecondary }]}>
-                    No Image
-                  </Text>
-                </View>
-              )}
-              <TouchableOpacity
-                onPress={editedImage ? () => setEditedImage(null) : pickImage}
-                style={styles.imageOverlayButton}
-              >
-                <Ionicons
-                  name={editedImage ? 'trash-outline' : 'camera-outline'}
-                  size={20}
-                  color={colors.background}
-                />
+      <Modal visible={!!editingItem} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.cardBackground }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <TouchableOpacity onPress={() => setEditingItem(null)}>
+                <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                Edit Item
+              </Text>
+              <View style={{ width: 24 }} />
             </View>
 
-            {/* Item Name */}
-            <Text style={[typo.label, { color: colors.textSecondary }]}>Item Name</Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
+            <ScrollView
+              style={styles.modalContent}
+              contentContainerStyle={{ paddingBottom: 20 }}
+            >
+              <View style={styles.imageWrapper}>
+                {editedImage ? (
+                  <>
+                    <Image source={{ uri: editedImage }} style={styles.modalImage} />
+                    <TouchableOpacity
+                      onPress={pickImage}
+                      style={[styles.imageEditButton, { backgroundColor: colors.primary }]}
+                    >
+                      <Ionicons name="create-outline" size={20} color={colors.background} />
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.modalPlaceholder, {
+                      backgroundColor: colors.inputBackground,
+                      borderColor: colors.border,
+                    }]}
+                    onPress={pickImage}
+                  >
+                    <Ionicons name="camera-outline" size={32} color={colors.textSecondary} />
+                    <Text style={[typo.small, { color: colors.textSecondary, marginTop: 8 }]}>
+                      No Image
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <Text style={[typo.label, { color: colors.textSecondary }]}>Item Name</Text>
+              <TextInput
+                style={[styles.input, {
                   backgroundColor: colors.inputBackground,
                   borderColor: colors.inputBorder,
                   color: colors.textPrimary,
-                },
-              ]}
-              value={editedTitle}
-              onChangeText={setEditedTitle}
-              placeholder="Enter name"
-              placeholderTextColor={colors.textSecondary}
-            />
-
-            {/* Location */}
-            <Text style={[typo.label, { color: colors.textSecondary }]}>Location</Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.inputBackground,
-                  borderColor: colors.inputBorder,
-                  color: colors.textPrimary,
-                },
-              ]}
-              value={editedLocation}
-              onChangeText={setEditedLocation}
-              placeholder="Enter location"
-              placeholderTextColor={colors.textSecondary}
-            />
-          </ScrollView>
-
-          {/* Actions */}
-          <View style={styles.modalActions}>
-            <Button title="Cancel" onPress={() => setEditingItem(null)} />
-            <Button
-                title="Save"
-                onPress={async () => {
-                  const updated = items.map((i) =>
-                    i.id === editingItem.id
-                      ? { ...i, title: editedTitle, location: editedLocation, image: editedImage }
-                      : i
-                  );
-                  setItems(updated);
-                  await saveItems(updated);
-                  if (editingItem?.id && swipeableRefs.current[editingItem.id]) {
-                      swipeableRefs.current[editingItem.id]?.close();
-                  }
-                  setEditingItem(null);
-                  setEditedTitle('');
-                  setEditedLocation('');
-                  setEditedImage(null);
-                }}
+                }]}
+                value={editedTitle}
+                onChangeText={setEditedTitle}
+                placeholder="Enter name"
+                placeholderTextColor={colors.textSecondary}
               />
+
+              <Text style={[typo.label, { color: colors.textSecondary }]}>Location</Text>
+              <TextInput
+                style={[styles.input, {
+                  backgroundColor: colors.inputBackground,
+                  borderColor: colors.inputBorder,
+                  color: colors.textPrimary,
+                }]}
+                value={editedLocation}
+                onChangeText={setEditedLocation}
+                placeholder="Enter location"
+                placeholderTextColor={colors.textSecondary}
+              />
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <Button title="Cancel" onPress={() => setEditingItem(null)} />
+              <Button title="Save" onPress={onSaveEditedItem} />
+            </View>
           </View>
         </View>
-      </View>
-    </Modal>
-
+      </Modal>
 
       {/* Snackbar */}
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
-        duration={4000}
         action={{
           label: 'Undo',
           onPress: () => {
             if (deletedItem) {
-              const updated = [...items, deletedItem];
-              setItems(updated);
-              saveItems(updated);
+              setItems(prev => [...prev, deletedItem]);
+              saveItems([...items, deletedItem]);
               setDeletedItem(null);
             }
           },
         }}
-        style={styles.snackbar}
       >
         Item deleted
       </Snackbar>
@@ -426,22 +343,47 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
-  // title: { ...typo.title, marginBottom: 12 },
-  // empty: { marginTop: 20, textAlign: 'center', color: colors.textSecondary },
-  searchWrapper: {
+  heading: { fontSize: 28, marginBottom: 16 },
+  searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    height: 44,
+    marginBottom: 16,
   },
-  searchIcon: { marginRight: 6 },
-  searchInputWithIcon: { flex: 1, height: 40, fontSize: 15, },
-  separator: { height: 1, backgroundColor: '#e0e0e0', marginLeft: 80 },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 16 },
+  chipContainer: { marginBottom: 16 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 12,
+    width: width - 40,
+  },
+  thumb: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  image: { width: '100%', height: '100%', resizeMode: 'cover' },
+  info: { flex: 1, marginLeft: 12 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   actionButton: {
     width: 64,
     justifyContent: 'center',
     alignItems: 'center',
+    height: 85,
   },
   modalBackdrop: {
     flex: 1,
@@ -449,34 +391,61 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalBox: {
-    width: '90%',
-    borderRadius: 12,
-    padding: 20,
+  modalContainer: {
+    width: '85%',
+    maxHeight: '80%',
+    borderRadius: 16,
+    padding: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  modalContent: {
+    flexGrow: 0,
+    width: '100%',
+    marginTop: 10,
   },
   imageWrapper: {
     position: 'relative',
-    width: 100,
-    height: 100,
-    marginBottom: 12,
+    width: 120,
+    height: 120,
+    alignSelf: 'center',
+    marginBottom: 16,
   },
   modalImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 10,
-    backgroundColor: '#eee',
-    borderWidth: 1,
-    borderColor: '#ccc',
+    borderRadius: 12,
   },
-  imageOverlayButton: {
+  modalPlaceholder: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageEditButton: {
     position: 'absolute',
     top: 6,
     right: 6,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 8,
-    borderRadius: 16,
+    padding: 6,
+    borderRadius: 12,
+    zIndex: 2,
   },
   input: {
+    width: '100%',
     borderWidth: 1,
     borderRadius: 8,
     paddingVertical: 10,
@@ -484,51 +453,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 12,
   },
-  placeholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#eee',
-    borderRadius: 8,
-    width: 100,
-    height: 100,
-  },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
-  },
-  snackbar: {
-    borderRadius: 12,
-    backgroundColor: '#333',
-    position: 'absolute',
-    bottom: 70,
-    left: 16,
-    right: 16,
-    zIndex: 75,
-  },
-  heading:{ marginBottom: 12 },
-   actionText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-   modalContainer: {
-    width: '85%',
-    maxHeight: '80%',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-   modalContent: {
-    flexGrow: 0,
+    marginTop: 12,
+    width: '100%',
   },
 });
