@@ -31,3 +31,8 @@ export const darkColors = {
   shadow: 'rgba(255, 255, 255, 0.1)',
   info: '#5ac8fa',
 };
+
+export const Colors = {
+  light: lightColors,
+  dark: darkColors,
+} as const;
