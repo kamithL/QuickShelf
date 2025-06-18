@@ -9,9 +9,7 @@ import {
   Alert,
   Button,
   Image,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,13 +20,17 @@ import {
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Snackbar } from 'react-native-paper';
-import { colors } from '../../theme/colors';
-import { typography } from '../../theme/typography';
+
+import { useTheme } from '@/theme/ThemeContext';
+import { useTypography } from '../../theme/typography';
 import ItemCard from '../components/ItemCard';
 import { loadItems, saveItems } from '../services/storage';
 
 
 export default function HomeScreen() {
+  const { colors } = useTheme(); // 
+  const typo = useTypography();
+
   const [items, setItems] = useState<any[]>([]);
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [editedTitle, setEditedTitle] = useState('');
@@ -161,7 +163,7 @@ export default function HomeScreen() {
           });
         }}
       >
-        <View style={styles.row}>
+        <View style={{ backgroundColor: colors.cardBackground }}>
           <ItemCard item={item} />
         </View>
       </TouchableOpacity>
@@ -169,23 +171,25 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>My Inventory</Text>
-      <View style={styles.searchWrapper}>
+    <View style={[styles.container, { backgroundColor: colors.background }]} >
+      <Text style={[typo.title, styles.heading, { color: colors.textPrimary }]}>
+        My Inventory
+      </Text>
+      <View style={[styles.searchWrapper,{backgroundColor: colors.inputBackground}]}>
         <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search items..."
           placeholderTextColor={colors.textSecondary}
-          style={styles.searchInputWithIcon}
+          style={[styles.searchInputWithIcon,{color: colors.textPrimary}]}
         />
       </View>
       <View style={{ marginBottom: 16 }}>
-      <Text style={[typography.label, { marginBottom: 8 }]}>Filter by Location</Text>
+      <Text style={[typo.label, { marginBottom: 8 }]}>Filter by Location</Text>
       <View
         style={{
-          backgroundColor: '#f0f0f0',
+          backgroundColor: colors.cardBackground,
           borderRadius: 8,
           paddingHorizontal: 12,
           paddingVertical: 8,
@@ -250,7 +254,7 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleDelete(item.id)}
-                    style={[styles.actionButton, { backgroundColor: colors.danger }]}
+                    style={[styles.actionButton, { backgroundColor: colors.danger, }]}
                   >
                     <Ionicons name="trash-outline" size={24} color="#fff" />
                   </TouchableOpacity>
@@ -271,68 +275,107 @@ export default function HomeScreen() {
                   });
                 }}
               >
-                <View style={styles.row}>
+                <View style={{ backgroundColor: colors.cardBackground }}>
                   <ItemCard item={item} />
                 </View>
               </TouchableOpacity>
             </Swipeable>
           </ScaleDecorator>
         )}
+        contentContainerStyle={{ paddingBottom: 180 }} 
+        keyboardShouldPersistTaps="handled"
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
 
 
       {/* Edit Modal */}
-      <Modal visible={!!editingItem} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          style={styles.modalBackdrop}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={80}
-        >
+     <Modal visible={!!editingItem} animationType="fade" transparent>
+      <View style={styles.modalBackdrop}>
+        <View style={[styles.modalContainer, { backgroundColor: colors.cardBackground }]}>
+          
+          {/* Header with title + close button */}
+          <View style={styles.modalHeader}>
+            <Text style={[typo.heading, { color: colors.textPrimary }]}>
+              Edit Item
+            </Text>
+            <TouchableOpacity onPress={() => setEditingItem(null)}>
+              <Ionicons name="close-circle" size={28} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Content */}
           <ScrollView
-            contentContainerStyle={styles.modalBox}
+            style={styles.modalContent}
+            contentContainerStyle={{ paddingBottom: 20 }}
             keyboardShouldPersistTaps="handled"
           >
-            <Text style={[typography.heading, { marginBottom: 12 }]}>Edit Item</Text>
-
-            <Text style={typography.label}>Image</Text>
+            {/* Image preview + delete */}
             <View style={styles.imageWrapper}>
               {editedImage ? (
                 <Image source={{ uri: editedImage }} style={styles.modalImage} />
               ) : (
-                <View style={[styles.modalImage, styles.placeholder]}>
-                  <Text style={typography.small}>No Image</Text>
+                <View
+                  style={[
+                    styles.modalImage,
+                    { backgroundColor: colors.inputBackground, borderColor: colors.border },
+                  ]}
+                >
+                  <Text style={[typo.small, { color: colors.textSecondary }]}>
+                    No Image
+                  </Text>
                 </View>
               )}
               <TouchableOpacity
                 onPress={editedImage ? () => setEditedImage(null) : pickImage}
                 style={styles.imageOverlayButton}
               >
-                <Ionicons name={editedImage ? 'trash-outline' : 'camera-outline'} size={18} color="#fff" />
+                <Ionicons
+                  name={editedImage ? 'trash-outline' : 'camera-outline'}
+                  size={20}
+                  color={colors.background}
+                />
               </TouchableOpacity>
             </View>
 
-            <Text style={typography.label}>Item Name</Text>
+            {/* Item Name */}
+            <Text style={[typo.label, { color: colors.textSecondary }]}>Item Name</Text>
             <TextInput
-              style={styles.input}
-              placeholder="Title"
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.inputBackground,
+                  borderColor: colors.inputBorder,
+                  color: colors.textPrimary,
+                },
+              ]}
               value={editedTitle}
               onChangeText={setEditedTitle}
+              placeholder="Enter name"
               placeholderTextColor={colors.textSecondary}
             />
 
-            <Text style={typography.label}>Location</Text>
+            {/* Location */}
+            <Text style={[typo.label, { color: colors.textSecondary }]}>Location</Text>
             <TextInput
-              style={styles.input}
-              placeholder="Location"
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.inputBackground,
+                  borderColor: colors.inputBorder,
+                  color: colors.textPrimary,
+                },
+              ]}
               value={editedLocation}
               onChangeText={setEditedLocation}
+              placeholder="Enter location"
               placeholderTextColor={colors.textSecondary}
             />
+          </ScrollView>
 
-            <View style={styles.modalActions}>
-              <Button title="Cancel" onPress={() => setEditingItem(null)} />
-              <Button
+          {/* Actions */}
+          <View style={styles.modalActions}>
+            <Button title="Cancel" onPress={() => setEditingItem(null)} />
+            <Button
                 title="Save"
                 onPress={async () => {
                   const updated = items.map((i) =>
@@ -351,10 +394,10 @@ export default function HomeScreen() {
                   setEditedImage(null);
                 }}
               />
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Modal>
+          </View>
+        </View>
+      </View>
+    </Modal>
 
 
       {/* Snackbar */}
@@ -382,23 +425,20 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: colors.background },
-  title: { ...typography.title, marginBottom: 12 },
-  empty: { marginTop: 20, textAlign: 'center', color: colors.textSecondary },
+  container: { flex: 1, padding: 20 },
+  // title: { ...typo.title, marginBottom: 12 },
+  // empty: { marginTop: 20, textAlign: 'center', color: colors.textSecondary },
   searchWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.inputBackground,
     borderRadius: 8,
     paddingHorizontal: 10,
     marginBottom: 12,
   },
   searchIcon: { marginRight: 6 },
-  searchInputWithIcon: { flex: 1, height: 40, fontSize: 15, color: colors.textPrimary },
-  row: { backgroundColor: colors.cardBackground },
+  searchInputWithIcon: { flex: 1, height: 40, fontSize: 15, },
   separator: { height: 1, backgroundColor: '#e0e0e0', marginLeft: 80 },
   actionButton: {
-    backgroundColor: colors.danger,
     width: 64,
     justifyContent: 'center',
     alignItems: 'center',
@@ -411,7 +451,6 @@ const styles = StyleSheet.create({
   },
   modalBox: {
     width: '90%',
-    backgroundColor: colors.cardBackground,
     borderRadius: 12,
     padding: 20,
   },
@@ -439,13 +478,10 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.inputBorder || '#ccc',
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontSize: 15,
-    color: colors.textPrimary,
-    backgroundColor: colors.inputBackground,
     marginBottom: 12,
   },
   placeholder: {
@@ -469,5 +505,30 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     zIndex: 75,
+  },
+  heading:{ marginBottom: 12 },
+   actionText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+   modalContainer: {
+    width: '85%',
+    maxHeight: '80%',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+   modalContent: {
+    flexGrow: 0,
   },
 });
