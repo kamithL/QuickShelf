@@ -87,7 +87,7 @@ export default function AddItemScreen() {
     setImage(null); 
     setShowErrors(false);
     setShowLocationDropdown(false);
-    setShowLocationDropdown(false)
+    setShowCategoryDropdown(false);
     router.replace('/');
   };
 
